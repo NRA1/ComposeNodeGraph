@@ -2,36 +2,37 @@ import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.onDrag
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.size
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.onPointerEvent
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.round
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import kotlin.math.ceil
 import kotlin.math.max
+import kotlin.math.roundToInt
 
+@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
 @Preview
 fun App() {
@@ -43,10 +44,11 @@ fun App() {
         inputs = listOf(),
         outputs = listOf(),
         position = DpOffset(x = 100.dp, y = 100.dp),
-    );
+    )
     val output = OutputState(
         parent = node1,
-        label = "Output"
+        label = "Output",
+        1
     )
     node1.outputs.add(output)
     nodes.add(node1)
@@ -61,66 +63,230 @@ fun App() {
 
     val input = InputState(
         parent = node2,
-        label = "Input"
+        label = "Input",
+        1
     )
     node2.inputs.add(input)
+
+    val output2 = OutputState(
+        parent = node2,
+        label = "Output2",
+        2,
+    )
+    node2.outputs.add(output2)
     nodes.add(node2)
+    
+    val node3 = NodeState(
+        text = "Node3",
+        inputs = listOf(),
+        outputs = listOf(),
+        position = DpOffset(x = 100.dp, y = 300.dp)
+    )
+    val input2 = InputState(
+        parent = node3,
+        label = "Input2",
+        2
+    )
+    node3.inputs.add(input2)
+    nodes.add(node3)
 
-    input.source = output
-    output.target = input
+    data class DraggedConnection(
+        val source: OutputState,
+        val point: Offset
+    )
+    var draggedConnection by mutableStateOf<DraggedConnection?>(null)
 
-    MaterialTheme {
+    val density = LocalDensity.current
 
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .drawWithCache {
-                    onDrawBehind {
-                        nodes.map { node ->
-                            node.outputs.mapNotNull { output ->
-                                output.target?.let { output to it }
-                            }
-                        }.flatten().forEach { (output, input) ->
+    var viewportOffset by remember { mutableStateOf(Offset.Zero) }
 
-                            val outputPointOffset = output.connectionPointOffset
-                            val inputPointOffset = input.connectionPointOffset
-                            if(outputPointOffset == null || inputPointOffset == null) return@forEach
+    val colorScheme = MaterialTheme.colorScheme
 
-                            drawLine(
-                                color = Color.Magenta,
-                                start = Offset(
-                                    x = output.parent.position.x.toPx(), y = output.parent.position.y.toPx()
-                                ) + outputPointOffset,
-                                end = Offset(
-                                    x = input.parent.position.x.toPx(), y = input.parent.position.y.toPx()
-                                ) + inputPointOffset,
-                            )
+    var scale by remember { mutableStateOf(1f) }
+
+    MaterialTheme(darkColorScheme()) {
+        Surface(
+            color = MaterialTheme.colorScheme.background,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .onDrag { offset ->
+                        viewportOffset += offset
+                    }
+                    .onPointerEvent(PointerEventType.Scroll) { event ->
+//                        scale += event.changes[0].scrollDelta.y / 10
+                    }
+                    .pointerHoverIcon(
+                        if(draggedConnection != null) PointerIcon.Crosshair
+                        else PointerIcon.Default
+                    )
+                    .drawWithCache {
+                        onDrawBehind {
+                            val dp100 = 100.dp.toPx() * scale
+
+                            val xMod = (viewportOffset.x % dp100).roundToInt()
+                            val xCount = ceil(size.width / dp100).toInt()
+
+                            for(ix in 0..xCount)
+                                drawLine(
+                                    color = colorScheme.outline,
+                                    start = Offset(ix * dp100 + xMod, 0f),
+                                    end = Offset(ix * dp100 + xMod, size.height),
+                                    strokeWidth = 1.dp.toPx()
+                                    )
+
+                            val yMod = (viewportOffset.y % dp100).roundToInt()
+                            val yCount = ceil(size.height / dp100).toInt()
+
+                            for(iy in 0..yCount)
+                                drawLine(
+                                    color = colorScheme.outline,
+                                    start = Offset(0f, iy * dp100 + yMod),
+                                    end = Offset(size.width, iy * dp100 + yMod),
+                                    strokeWidth = 1.dp.toPx()
+                                )
                         }
                     }
+                    .absoluteOffset { viewportOffset.round() }
+                    .scale(scale)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .drawWithCache {
+                            onDrawBehind {
+                                nodes.map { node ->
+                                    node.outputs.map { output ->
+                                        output.targets.map { output to it }
+                                    }
+                                }.flatten().flatten().forEach { (output, input) ->
+
+                                    val outputPointOffset = output.connectionPointOffset
+                                    val inputPointOffset = input.connectionPointOffset
+                                    if(outputPointOffset == null || inputPointOffset == null) return@forEach
+
+                                    val startPos = output.parent.getPxOffset(density) + outputPointOffset
+                                    val endPos = input.parent.getPxOffset(density) + inputPointOffset
+
+                                    val distance = (startPos - endPos).getDistance()
+
+                                    drawPath(
+                                        path = Path().apply {
+                                            moveTo(startPos.x, startPos.y)
+                                            cubicTo(
+                                                x1 = startPos.x + distance / 3,
+                                                y1 = startPos.y,
+                                                x2 = endPos.x - distance / 3,
+                                                y2 = endPos.y,
+                                                x3 = endPos.x,
+                                                y3 = endPos.y
+                                            )
+                                        },
+                                        color = ColorScheme.forId(output.type),
+                                        style = Stroke(width = 3.dp.toPx())
+                                    )
+                                }
+
+                                draggedConnection?.let { connection ->
+                                    val outputPointOffset = connection.source.connectionPointOffset
+
+                                    if(outputPointOffset == null) return@let
+
+                                    val startPos = connection.source.parent.getPxOffset(density) + outputPointOffset
+
+
+                                    drawPath(
+                                        path = Path().apply {
+                                            moveTo(startPos.x, startPos.y)
+
+                                            cubicTo(
+                                                x1 = startPos.x + (startPos - connection.point).getDistance() / 3,
+                                                y1 = startPos.y,
+                                                x2 = connection.point.x,
+                                                y2 = connection.point.y,
+                                                x3 = connection.point.x,
+                                                y3 = connection.point.y
+                                            )
+                                        },
+                                        color = ColorScheme.forId(connection.source.type),
+                                        style = Stroke(width = 3.dp.toPx())
+                                    )
+                                }
+                            }
+                        }
+                ) {
+                    for (node in nodes) {
+                        Node(
+                            state = node,
+                            onConnectorDrag = { connector, offset ->
+                                draggedConnection.let { connection ->
+                                    if(connection == null) {
+                                        draggedConnection = when(connector) {
+                                            is InputState -> {
+                                                val source = connector.source
+                                                if(source == null) null
+                                                else {
+                                                    connector.source = null
+                                                    source.targets.remove(connector)
+                                                    DraggedConnection(
+                                                        source = source,
+                                                        point = connector.parent.getPxOffset(density) + connector.connectionPointOffset!! + offset
+                                                    )
+                                                }
+                                            }
+                                            is OutputState -> DraggedConnection(
+                                                source = connector,
+                                                point = connector.parent.getPxOffset(density) + connector.connectionPointOffset!! + offset
+                                            )
+                                        }
+                                    } else {
+                                        draggedConnection = connection.copy(
+                                            point = connection.point + offset
+                                        )
+                                    }
+                                }
+                            },
+                            onDragEnd = {
+                                val maxDistance = with(density) { Offset(x = 5.dp.toPx(), y = 5.dp.toPx()) }.getDistanceSquared()
+
+                                draggedConnection?.let { connection ->
+                                    val target = nodes.map { it.inputs }.flatten().firstOrNull() {
+                                        ((it.parent.getPxOffset(density) + it.connectionPointOffset!!) - connection.point)
+                                            .getDistanceSquared() <= maxDistance
+                                    }
+
+                                    if (target != null && target.type == connection.source.type) {
+                                        target.source = connection.source
+                                        connection.source.targets.add(target)
+                                    }
+                                }
+
+                                draggedConnection = null
+                            }
+                        )
+                    }
                 }
-        ) {
-            for (node in nodes) {
-                Node(state = node)
             }
         }
-
     }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun Node(state: NodeState, onConnectorDrag: (ConnectorState, Offset) -> Unit) {
+fun Node(state: NodeState, onConnectorDrag: (ConnectorState, Offset) -> Unit, onDragEnd: () -> Unit) {
     val density = LocalDensity.current
 
     Box(
         modifier = Modifier
-            .offset(x = state.position.x, y = state.position.y)
+            .absoluteOffset(x = state.position.x, y = state.position.y)
     ) {
         var nodeRootPos: Offset? = null
 
-        Box(
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            shape = MaterialTheme.shapes.medium,
             modifier = Modifier
-                .background(Color.Blue)
                 .onDrag(
                     onDrag = { offset ->
                         state.position += DpOffset(
@@ -129,44 +295,59 @@ fun Node(state: NodeState, onConnectorDrag: (ConnectorState, Offset) -> Unit) {
                         )
                     }
                 )
+                .pointerHoverIcon(PointerIcon.Crosshair)
                 .onGloballyPositioned { coordinates ->
                     val rootOffset = coordinates.localToRoot(Offset.Zero)
                     nodeRootPos = rootOffset
                 }
         ) {
-            Column {
-                Text(state.title)
+            Column(
+                modifier = Modifier
+                    .width(IntrinsicSize.Min)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                        .padding(5.dp)
+                ) {
+                    Text(text = state.title, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                }
 
-                val maxNum = max(state.inputs.size, state.outputs.size)
+                Column(
+                    modifier = Modifier
+                        .padding(start = 5.dp, bottom = 5.dp, end = 5.dp)
+                ) {
 
-                for(i in 0 until maxNum) {
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        if(state.inputs.size > i) {
-                            val input = state.inputs[i]
+                    val maxNum = max(state.inputs.size, state.outputs.size)
 
-                            InputConnector(
-                                state = input,
-                                onPointPositioned = { offset ->
-                                    input.connectionPointOffset = offset - nodeRootPos!!
+                    for(i in 0 until maxNum) {
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            @Composable
+                            fun ConnectorIfExists(list: List<ConnectorState>, i: Int) {
+                                if(list.size > i) {
+                                    val input = list[i]
+
+                                    Connector(
+                                        state = input,
+                                        onPointPositioned = { offset ->
+                                            input.connectionPointOffset = offset - nodeRootPos!!
+                                        },
+                                        onPointDrag = { offset ->
+                                            onConnectorDrag(input, offset)
+                                        },
+                                        onPointDragEnd = onDragEnd
+                                    )
+                                } else {
+                                    Spacer(Modifier)
                                 }
-                            )
-                        } else {
-                            Spacer(Modifier)
-                        }
+                            }
 
-                        if(state.outputs.size > i) {
-                            val output = state.outputs[i]
-
-                            OutputConnector(
-                                state = output,
-                                onPointPositioned = { offset ->
-                                     output.connectionPointOffset = offset - nodeRootPos!!
-                                }
-                            )
-                        } else {
-                            Spacer(Modifier)
+                            ConnectorIfExists(state.inputs, i)
+                            if(state.inputs.size > i && state.outputs.size > i) Spacer(Modifier.width(10.dp))
+                            ConnectorIfExists(state.outputs, i)
                         }
                     }
                 }
@@ -176,36 +357,33 @@ fun Node(state: NodeState, onConnectorDrag: (ConnectorState, Offset) -> Unit) {
 }
 
 @Composable
-fun InputConnector(state: InputState, onPointPositioned: (Offset) -> Unit, modifier: Modifier = Modifier) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier
-    ) {
-        ConnectionPoint(
-            onPositioned = onPointPositioned,
-            onDrag = {}
-        )
-        Text(state.label)
-    }
-}
+fun Connector(state: ConnectorState, onPointPositioned: (Offset) -> Unit, onPointDrag: (Offset) -> Unit, onPointDragEnd: () -> Unit, modifier: Modifier = Modifier) {
 
-@Composable
-fun OutputConnector(state: OutputState, onPointPositioned: (Offset) -> Unit, onPointDragged: (Offset) -> Unit, modifier: Modifier = Modifier) {
+    @Composable
+    fun Point()
+    {
+        ConnectionPoint(
+            connectorType = state.type,
+            onPositioned = onPointPositioned,
+            onDrag = onPointDrag,
+            onDragEnd = onPointDragEnd
+        )
+    }
+
     Row(
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
     ) {
+        if(state is InputState) Point()
         Text(state.label)
-        ConnectionPoint(
-            onPositioned = onPointPositioned,
-            onDrag = onPointDragged
-        )
+        if(state is OutputState) Point()
     }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ConnectionPoint(onPositioned: (Offset) -> Unit, onDrag: (Offset) -> Unit, modifier: Modifier = Modifier) {
+fun ConnectionPoint(connectorType: Int, onPositioned: (Offset) -> Unit, onDrag: (Offset) -> Unit, onDragEnd: () -> Unit, modifier: Modifier = Modifier) {
     val density = LocalDensity.current
 
     Box(
@@ -219,10 +397,13 @@ fun ConnectionPoint(onPositioned: (Offset) -> Unit, onDrag: (Offset) -> Unit, mo
                 )
                 onPositioned(rootOffset)
             }
-            .onDrag(onDrag = onDrag)
+            .onDrag(
+                onDrag = onDrag,
+                onDragEnd = onDragEnd
+            )
             .drawBehind {
                 drawCircle(
-                    color = Color.Red
+                    color = ColorScheme.forId(connectorType)
                 )
             }
     )

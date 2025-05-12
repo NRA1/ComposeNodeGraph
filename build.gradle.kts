@@ -1,9 +1,12 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import org.jetbrains.compose.reload.ComposeHotRun
+import org.jetbrains.kotlin.compose.compiler.gradle.ComposeFeatureFlag
 
 plugins {
     kotlin("jvm")
+    kotlin("plugin.compose") version "2.1.20"
     id("org.jetbrains.compose")
-    id("org.jetbrains.kotlin.plugin.compose")
+    id("org.jetbrains.compose.hot-reload") version "1.0.0-alpha09"
 }
 
 group = "org.nara"
@@ -21,6 +24,7 @@ dependencies {
     // (in a separate module for demo project and in testMain).
     // With compose.desktop.common you will also lose @Preview functionality
     implementation(compose.desktop.currentOs)
+    implementation(compose.material3)
 }
 
 compose.desktop {
@@ -33,4 +37,12 @@ compose.desktop {
             packageVersion = "1.0.0"
         }
     }
+}
+
+tasks.withType<ComposeHotRun>().configureEach {
+    mainClass.set("MainKt")
+}
+
+composeCompiler {
+    featureFlags.add(ComposeFeatureFlag.OptimizeNonSkippingGroups)
 }
