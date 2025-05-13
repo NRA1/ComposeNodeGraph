@@ -5,6 +5,7 @@ import org.jetbrains.kotlin.compose.compiler.gradle.ComposeFeatureFlag
 plugins {
     kotlin("jvm")
     kotlin("plugin.compose") version "2.1.20"
+    kotlin("plugin.serialization") version "2.1.21"
     id("org.jetbrains.compose")
     id("org.jetbrains.compose.hot-reload") version "1.0.0-alpha09"
 }
@@ -25,6 +26,7 @@ dependencies {
     // With compose.desktop.common you will also lose @Preview functionality
     implementation(compose.desktop.currentOs)
     implementation(compose.material3)
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
 }
 
 compose.desktop {

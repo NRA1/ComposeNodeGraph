@@ -1,6 +1,11 @@
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.onDrag
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -9,6 +14,11 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -19,12 +29,12 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.max
 
 class NodeState(
-    text: String,
+    title: String,
     inputs: List<InputState>,
     outputs: List<OutputState>,
     position: DpOffset = DpOffset.Zero
 ) {
-    var title: String by mutableStateOf(text)
+    var title: String by mutableStateOf(title)
     val inputs: SnapshotStateList<InputState> = mutableStateListOf(*inputs.toTypedArray())
     val outputs: SnapshotStateList<OutputState> = mutableStateListOf(*outputs.toTypedArray())
 
@@ -50,7 +60,7 @@ class NodeState(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun Node(state: NodeState, onConnectorDrag: (ConnectorState, Offset) -> Unit, onDragEnd: () -> Unit, scale: Float) {
+fun Node(state: NodeState, onDelete: () -> Unit, onConnectorDrag: (ConnectorState, Offset) -> Unit, onDragEnd: () -> Unit, scale: Float) {
     val density = LocalDensity.current
 
     Box(
@@ -59,10 +69,19 @@ fun Node(state: NodeState, onConnectorDrag: (ConnectorState, Offset) -> Unit, on
     ) {
         var nodeRootPos: Offset? = null
 
+        var interactionSource = remember { MutableInteractionSource() }
+        val focused by interactionSource.collectIsFocusedAsState()
+
         Surface(
+            border = if(focused) BorderStroke(
+                width = 2.dp,
+                color = MaterialTheme.colorScheme.primary
+            ) else null,
             color = MaterialTheme.colorScheme.surfaceContainer,
             shape = MaterialTheme.shapes.medium,
             modifier = Modifier
+                .focusable(interactionSource = interactionSource)
+                .clickable(interactionSource = interactionSource, indication = null) {  }
                 .onDrag(
                     onDrag = { offset ->
                         state.position += DpOffset(
@@ -75,6 +94,13 @@ fun Node(state: NodeState, onConnectorDrag: (ConnectorState, Offset) -> Unit, on
                 .onGloballyPositioned { coordinates ->
                     val rootOffset = coordinates.localToRoot(Offset.Zero)
                     nodeRootPos = rootOffset
+                }
+                .onKeyEvent { event ->
+                    if(event.key == Key.Delete) {
+                        if(event.type == KeyEventType.KeyDown)
+                            onDelete()
+                        true
+                    } else false
                 }
         ) {
             Column(

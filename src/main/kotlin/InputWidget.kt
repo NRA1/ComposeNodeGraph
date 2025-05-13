@@ -79,6 +79,7 @@ fun TextWidget(enabled: Boolean, state: TextWidgetState, modifier: Modifier = Mo
             ) {
                 Box(
                     modifier = Modifier
+                        .fillMaxWidth()
                         .padding(vertical = 2.dp, horizontal = 2.dp)
                 ) {
                     innerTextField()
@@ -173,7 +174,7 @@ fun NumberField(value: String, onValueChange: (String) -> Unit, enabled: Boolean
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
             ) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     modifier = Modifier
                         .padding(2.dp)
                 ) {
@@ -182,11 +183,13 @@ fun NumberField(value: String, onValueChange: (String) -> Unit, enabled: Boolean
                         color = colors.unfocusedPlaceholderColor,
                         style = textStyle,
                     )
+                    Spacer(Modifier.width(2.dp))
                     innerTextField()
                 }
             }
         },
         modifier = modifier
+            .fillMaxWidth()
     )
 }
 

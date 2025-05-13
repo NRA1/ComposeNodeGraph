@@ -25,7 +25,8 @@ import kotlin.math.roundToInt
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
-fun Graph(nodes: List<NodeState>, modifier: Modifier = Modifier) {
+fun Graph(nodes: List<NodeState>, viewportOffset: Offset, viewportOffsetChange: (Offset) -> Unit,
+          onNodeDelete: (NodeState) -> Unit, modifier: Modifier = Modifier) {
 
     data class DraggedConnection(
         val source: OutputState,
@@ -35,8 +36,6 @@ fun Graph(nodes: List<NodeState>, modifier: Modifier = Modifier) {
 
     val density = LocalDensity.current
 
-    var viewportOffset by remember { mutableStateOf(Offset.Zero) }
-
     val colorScheme = MaterialTheme.colorScheme
 
     var scale by remember { mutableStateOf(1f) }
@@ -44,7 +43,7 @@ fun Graph(nodes: List<NodeState>, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .onDrag { offset ->
-                viewportOffset += offset
+                viewportOffsetChange(viewportOffset + offset)
             }
             .onPointerEvent(PointerEventType.Scroll) { event ->
                 val newScale = max(0.1f, min(3f, scale + event.changes[0].scrollDelta.y / 10))
@@ -118,7 +117,7 @@ fun Graph(nodes: List<NodeState>, modifier: Modifier = Modifier) {
                                         y3 = endPos.y
                                     )
                                 },
-                                color = ColorScheme.forId(output.type),
+                                color = ColorScheme.forId(output.type.hashCode()),
                                 style = Stroke(width = 3.dp.toPx())
                             )
                         }
@@ -144,7 +143,7 @@ fun Graph(nodes: List<NodeState>, modifier: Modifier = Modifier) {
                                         y3 = connection.point.y
                                     )
                                 },
-                                color = ColorScheme.forId(connection.source.type),
+                                color = ColorScheme.forId(connection.source.type.hashCode()),
                                 style = Stroke(width = 3.dp.toPx())
                             )
                         }
@@ -200,7 +199,8 @@ fun Graph(nodes: List<NodeState>, modifier: Modifier = Modifier) {
 
                         draggedConnection = null
                     },
-                    scale = scale
+                    scale = scale,
+                    onDelete = { onNodeDelete(node) }
                 )
             }
         }

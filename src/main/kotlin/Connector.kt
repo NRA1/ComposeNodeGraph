@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.dp
 sealed class ConnectorState(
     val parent: NodeState,
     label: String,
-    val type: Int
+    val type: String
 ) {
     var label: String by mutableStateOf(label)
     var connectionPointOffset: Offset? by mutableStateOf(null)
@@ -32,7 +32,7 @@ sealed class ConnectorState(
 class InputState(
     parent: NodeState,
     label: String,
-    type: Int,
+    type: String,
     widget: InputWidgetState? = null,
 ) : ConnectorState(parent, label, type) {
     var source: OutputState? by mutableStateOf(null)
@@ -43,7 +43,7 @@ class InputState(
 class OutputState(
     parent: NodeState,
     label: String,
-    type: Int
+    type: String
 ) : ConnectorState(parent, label, type) {
     val targets: SnapshotStateList<InputState> = mutableStateListOf()
 }
@@ -130,7 +130,7 @@ fun WidgetConnector(state: InputState, onPointPositioned: (Offset) -> Unit, onPo
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ConnectionPoint(connectorType: Int, onPositioned: (Offset) -> Unit, onDrag: (Offset) -> Unit, onDragEnd: () -> Unit, modifier: Modifier = Modifier) {
+fun ConnectionPoint(connectorType: String, onPositioned: (Offset) -> Unit, onDrag: (Offset) -> Unit, onDragEnd: () -> Unit, modifier: Modifier = Modifier) {
     val density = LocalDensity.current
 
     Box(
@@ -150,7 +150,7 @@ fun ConnectionPoint(connectorType: Int, onPositioned: (Offset) -> Unit, onDrag: 
             )
             .drawBehind {
                 drawCircle(
-                    color = ColorScheme.forId(connectorType)
+                    color = ColorScheme.forId(connectorType.hashCode())
                 )
             }
     )
