@@ -30,6 +30,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import kotlin.math.ceil
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
@@ -116,7 +117,20 @@ fun App() {
                         viewportOffset += offset
                     }
                     .onPointerEvent(PointerEventType.Scroll) { event ->
-//                        scale += event.changes[0].scrollDelta.y / 10
+                        val newScale = max(0.1f, min(3f, scale + event.changes[0].scrollDelta.y / 10))
+                        if(scale == newScale) return@onPointerEvent
+
+                        val oldScaledWidth = size.width * scale
+                        val oldScaledHeight = size.height * scale
+                        val newScaledWidth = size.width * newScale
+                        val newScaledHeight = size.height * newScale
+
+                        val xDelta = (oldScaledWidth - newScaledWidth) / 2
+                        val yDelta = (oldScaledHeight - newScaledHeight) / 2
+
+//                        viewportOffset -= Offset(xDelta, yDelta)
+
+                        scale = newScale
                     }
                     .pointerHoverIcon(
                         if(draggedConnection != null) PointerIcon.Crosshair
@@ -124,9 +138,12 @@ fun App() {
                     )
                     .drawWithCache {
                         onDrawBehind {
-                            val dp100 = 100.dp.toPx() * scale
+                            val scaleOffsetX = (size.width - (size.width * scale)) / 2
+                            val scaleOffsetY = (size.height - (size.height * scale)) / 2
 
-                            val xMod = (viewportOffset.x % dp100).roundToInt()
+                            val dp100 = 500.dp.toPx() * scale
+
+                            val xMod = ((viewportOffset.x + scaleOffsetX) % dp100).roundToInt()
                             val xCount = ceil(size.width / dp100).toInt()
 
                             for(ix in 0..xCount)
@@ -135,9 +152,9 @@ fun App() {
                                     start = Offset(ix * dp100 + xMod, 0f),
                                     end = Offset(ix * dp100 + xMod, size.height),
                                     strokeWidth = 1.dp.toPx()
-                                    )
+                                )
 
-                            val yMod = (viewportOffset.y % dp100).roundToInt()
+                            val yMod = ((viewportOffset.y + scaleOffsetY) % dp100).roundToInt()
                             val yCount = ceil(size.height / dp100).toInt()
 
                             for(iy in 0..yCount)
@@ -263,7 +280,8 @@ fun App() {
                                 }
 
                                 draggedConnection = null
-                            }
+                            },
+                            scale = scale
                         )
                     }
                 }
@@ -274,7 +292,7 @@ fun App() {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun Node(state: NodeState, onConnectorDrag: (ConnectorState, Offset) -> Unit, onDragEnd: () -> Unit) {
+fun Node(state: NodeState, onConnectorDrag: (ConnectorState, Offset) -> Unit, onDragEnd: () -> Unit, scale: Float) {
     val density = LocalDensity.current
 
     Box(
@@ -328,15 +346,15 @@ fun Node(state: NodeState, onConnectorDrag: (ConnectorState, Offset) -> Unit, on
                             @Composable
                             fun ConnectorIfExists(list: List<ConnectorState>, i: Int) {
                                 if(list.size > i) {
-                                    val input = list[i]
+                                    val connector = list[i]
 
                                     Connector(
-                                        state = input,
+                                        state = connector,
                                         onPointPositioned = { offset ->
-                                            input.connectionPointOffset = offset - nodeRootPos!!
+                                            connector.connectionPointOffset = (offset - nodeRootPos!!) / scale
                                         },
                                         onPointDrag = { offset ->
-                                            onConnectorDrag(input, offset)
+                                            onConnectorDrag(connector, offset)
                                         },
                                         onPointDragEnd = onDragEnd
                                     )
