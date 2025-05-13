@@ -118,18 +118,6 @@ fun App() {
                     }
                     .onPointerEvent(PointerEventType.Scroll) { event ->
                         val newScale = max(0.1f, min(3f, scale + event.changes[0].scrollDelta.y / 10))
-                        if(scale == newScale) return@onPointerEvent
-
-                        val oldScaledWidth = size.width * scale
-                        val oldScaledHeight = size.height * scale
-                        val newScaledWidth = size.width * newScale
-                        val newScaledHeight = size.height * newScale
-
-                        val xDelta = (oldScaledWidth - newScaledWidth) / 2
-                        val yDelta = (oldScaledHeight - newScaledHeight) / 2
-
-//                        viewportOffset -= Offset(xDelta, yDelta)
-
                         scale = newScale
                     }
                     .pointerHoverIcon(
